@@ -134,3 +134,68 @@ However, port-state results alone do not establish that a system is vulnerable o
 The targeted scan distinguished open, closed, and filtered ports on the authorized testing host.
 
 This established a baseline for understanding how Nmap classifies network accessibility before examining the underlying packet exchanges in Finding 2.
+
+### Finding 2 — TCP SYN Packet Trace Analysis
+
+#### Investigation Context
+
+The second investigation examined Nmap's TCP SYN scanning behavior using packet tracing.
+
+The objective was to understand how Nmap sends probes, interprets target responses, and determines whether a TCP port is open, closed, or filtered.
+
+#### Packet Trace Analysis
+
+The scan targeted `scanme.nmap.org` (`45.33.32.156`) from a Kali Linux system using source IP `10.0.2.15`.
+
+Nmap performed a SYN stealth scan against TCP ports `22`, `113`, and `139`.
+
+The packet trace displayed outbound SYN packets targeting all three ports. A SYN-ACK response was received from TCP port `22`, while no responses were recorded for ports `113` and `139` in the displayed trace.
+
+| Port | Observed Response | Nmap Classification |
+| --- | --- | --- |
+| `22/tcp` | SYN-ACK received | `open` |
+| `113/tcp` | No response | `filtered` |
+| `139/tcp` | No response | `filtered` |
+
+![Nmap TCP SYN packet trace](evidence/02-syn-packet-trace.png)
+
+*Figure 2 — Nmap SYN packet trace against scanme.nmap.org showing outbound SYN probes, a SYN-ACK response from TCP port 22, and no responses from ports 113 and 139. The results classify port 22 as open and ports 113 and 139 as filtered.*
+
+The trace explicitly reported `syn-ack` as the reason for port `22` being open and `no-response` for ports `113` and `139` being filtered.
+
+Nmap reported nine raw packets sent and two received during the scan.
+
+#### TCP SYN Scanning Interpretation
+
+A TCP SYN scan attempts to determine port availability without completing the normal three-way handshake for every tested port.
+
+Typical responses include:
+
+| Response | Interpretation |
+| --- | --- |
+| SYN-ACK | Indicates an open TCP port |
+| RST | Indicates a closed TCP port |
+| No response after retransmission | May result in a filtered classification |
+| Certain ICMP unreachable responses | May also indicate filtering |
+
+This behavior allows Nmap to identify accessible services and distinguish some network filtering conditions.
+
+In this capture, TCP port `22` responded with SYN-ACK, while the other tested ports did not provide responses sufficient to classify them as open or closed.
+
+#### Security Relevance
+
+Packet-level scan analysis provides additional context beyond a final list of open ports.
+
+For example, repeated unanswered probes may indicate network filtering, packet loss, or other connectivity conditions. A SYN-ACK response demonstrates that a target port responded as open from the scanner's network position.
+
+Understanding these differences helps analysts avoid treating every unreachable or filtered port as definitively closed.
+
+#### Analyst Assessment
+
+**Assessment: TCP SYN scanning behavior and response-based port classification identified.**
+
+The packet trace demonstrated how Nmap uses SYN probes and responses to classify TCP port states.
+
+The results also showed that scan observations can vary between attempts. The earlier targeted scan classified port `113` as closed, whereas this trace reported it as filtered.
+
+The available evidence does not establish why that classification changed.
