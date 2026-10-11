@@ -199,3 +199,94 @@ The packet trace demonstrated how Nmap uses SYN probes and responses to classify
 The results also showed that scan observations can vary between attempts. The earlier targeted scan classified port `113` as closed, whereas this trace reported it as filtered.
 
 The available evidence does not establish why that classification changed.
+
+### Finding 3 — Default vs. Full-Range TCP Port Discovery
+
+#### Investigation Context
+
+The third investigation assessed how scan scope affects service discovery on an internal Linux server.
+
+The objective was to compare Nmap's default TCP port selection against a scan covering all 65,535 TCP ports.
+
+The target was `10.10.10.10`, a server in my isolated VirtualBox lab environment.
+
+#### Default TCP Scan
+
+I began with a default Nmap scan:
+
+```bash
+nmap 10.10.10.10
+```
+
+The scan identified two open ports:
+
+| Port | State | Nmap Service Label |
+| --- | --- | --- |
+| `22/tcp` | `open` | `ssh` |
+| `9200/tcp` | `open` | `wap-wsp` |
+
+Nmap also reported 998 closed TCP ports.
+
+These results represented the exposed ports identified by Nmap's default scan selection, not an exhaustive assessment of every TCP port.
+
+The `wap-wsp` label was Nmap's initial port-based service identification and did not establish the actual application listening on TCP port `9200`.
+
+#### Full-Range TCP Scan
+
+I expanded the assessment to all TCP ports:
+
+```bash
+nmap -p1-65535 10.10.10.10
+```
+
+The expanded scan returned:
+
+| Port | State | Nmap Service Label |
+| --- | --- | --- |
+| `22/tcp` | `open` | `ssh` |
+| `5601/tcp` | `open` | `esmagent` |
+| `8220/tcp` | `open` | `unknown` |
+| `9200/tcp` | `open` | `wap-wsp` |
+
+Nmap reported 65,531 closed ports in this scan.
+
+Compared with the default scan, the expanded scan discovered two additional open ports:
+
+- `5601/tcp`
+- `8220/tcp`
+
+This demonstrated that relying exclusively on the default port selection could produce an incomplete view of a target's accessible services.
+
+#### Scan Comparison
+
+| Measurement | Default Scan | Full-Range Scan |
+| --- | --- | --- |
+| TCP ports scanned | 1,000 | 65,535 |
+| Open ports discovered | 2 | 4 |
+| Closed ports reported | 998 | 65,531 |
+| Open TCP ports | `22`, `9200` | `22`, `5601`, `8220`, `9200` |
+| Reported scan duration | 2.09 seconds | 7.87 seconds |
+
+![Default versus full-range Nmap port discovery](evidence/04-full-tcp-port-discovery.png)
+
+*Figure 3 — Comparison of a default Nmap scan and a full-range TCP scan against `10.10.10.10`. The default scan identified ports 22 and 9200, while the expanded scan additionally identified ports 5601 and 8220. The screenshot also includes subsequent service-detection output.*
+
+The full-range scan identified twice as many open ports as the default scan in this lab.
+
+The difference arose from examining a broader range of TCP ports rather than limiting the assessment to Nmap's default selection.
+
+#### Security Relevance
+
+Incomplete port discovery can cause analysts to overlook network-accessible services.
+
+In this investigation, the additional ports were associated with services in a security monitoring environment. Their visibility is relevant to understanding which components can be reached from the scanner's network location.
+
+However, an open port does not independently establish that a service is vulnerable or accessible from outside the isolated lab network.
+
+#### Analyst Assessment
+
+**Assessment: Full-range TCP scanning identified additional open services not reported by the default scan.**
+
+The initial scan identified ports `22` and `9200`, while the expanded scan also discovered `5601` and `8220`.
+
+This investigation demonstrated how scan configuration directly affects the completeness of network reconnaissance results.
