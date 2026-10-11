@@ -81,3 +81,43 @@ The report documents four protocol investigations:
 4. TLS Handshake Analysis
 
 The final sections will consolidate security implications, evidence limitations, and skills demonstrated.
+
+## Investigation Findings
+
+### Finding 1 — TCP Three-Way Handshake
+
+#### Investigation Context
+
+The first investigation focused on identifying how a TCP connection is established between two endpoints.
+
+Using Wireshark, I examined the initial packets of a TCP conversation to identify the handshake sequence and interpret the flags associated with connection establishment.
+
+#### Packet Analysis
+
+A successful TCP three-way handshake consists of three packets:
+
+| Sequence | TCP Flags | Interpretation |
+| --- | --- | --- |
+| 1 | `SYN` | The client initiates a connection |
+| 2 | `SYN, ACK` | The server acknowledges the request and responds |
+| 3 | `ACK` | The client acknowledges the server's response |
+
+The investigation examined packet direction, TCP flags, source and destination ports, and sequence information to distinguish the handshake stages.
+
+The observed packet sequence was consistent with successful TCP connection establishment.
+
+#### Security Relevance
+
+TCP handshake analysis is useful for distinguishing established connections from incomplete connection attempts.
+
+For example, repeated SYN packets without corresponding SYN-ACK responses can indicate connection failures, filtering, or potentially suspicious scanning behavior, depending on the broader context.
+
+However, an established TCP connection does not independently prove that higher-layer application communication succeeded or that the connection was malicious.
+
+#### Analyst Assessment
+
+**Assessment: TCP connection establishment identified through the three-way handshake.**
+
+The packet sequence demonstrated how TCP synchronization and acknowledgment flags establish a connection.
+
+The investigation also showed how packet-level analysis can support network troubleshooting and SOC investigations by identifying whether the initial connection process completed.
