@@ -290,3 +290,79 @@ However, an open port does not independently establish that a service is vulnera
 The initial scan identified ports `22` and `9200`, while the expanded scan also discovered `5601` and `8220`.
 
 This investigation demonstrated how scan configuration directly affects the completeness of network reconnaissance results.
+
+### Finding 4 — Independent Service and Version Enumeration
+
+#### Investigation Context
+
+The final investigation extended port discovery into service and version enumeration against my isolated internal lab server at `10.10.10.10`.
+
+After identifying four open TCP ports, I used Nmap's service-detection capabilities to investigate the applications and protocols associated with those ports.
+
+The objective was to distinguish initial port-based service labels from application information obtained through active service probing.
+
+#### Service Detection Command
+
+I performed an explicit service/version scan against the four discovered ports:
+
+```bash
+nmap -v -p22,5601,8220,9200 -sV --version-intensity 9 10.10.10.10
+```
+
+The scan used:
+
+- `-v` to display verbose progress information.
+- `-p22,5601,8220,9200` to limit scanning to the four previously discovered open ports.
+- `-sV` to enable service and version detection.
+- `--version-intensity 9` to use the highest service-probe intensity.
+
+#### Service Enumeration Results
+
+Nmap 7.95 reported the target as reachable and identified four open TCP ports.
+
+| Port | State | Service | Nmap Version/Fingerprint Information |
+| --- | --- | --- | --- |
+| `22/tcp` | `open` | `ssh` | OpenSSH 9.6p1 Ubuntu 3ubuntu13.19 |
+| `5601/tcp` | `open` | `http` | Elasticsearch Kibana, server name `soc-ubu01` |
+| `8220/tcp` | `open` | `ssl/http` | Golang `net/http` server |
+| `9200/tcp` | `open` | `ssl/http` | Elasticsearch REST API 7.0 or later, with security-realm metadata |
+
+![Nmap service and version enumeration](evidence/03-independent-service-version-enumeration.png)
+
+*Figure 4 — Independent Nmap service/version scan of `10.10.10.10`, identifying OpenSSH, Elasticsearch Kibana, a Golang HTTP server, and Elasticsearch REST API fingerprints across four open TCP ports.*
+
+The results provided substantially more application context than the initial default scan.
+
+For example, the default scan associated TCP port `9200` with the generic service label `wap-wsp`, while active service detection identified behavior consistent with an Elasticsearch REST API.
+
+The scan also identified Kibana on port `5601` and a Golang HTTP service on port `8220`.
+
+The presence of a Golang HTTP service does not independently establish the application's precise identity. Additional validation would be needed to confirm the service implementation and configuration.
+
+#### Service Fingerprint Limitations
+
+Nmap reported that one service remained unrecognized despite returning data.
+
+This highlights an important limitation of remote service enumeration: active probing can identify protocol behavior, application fingerprints, and potential version information without conclusively identifying every application.
+
+The reported OpenSSH version and Elasticsearch version range were observations from Nmap's output, not independently verified software inventory records.
+
+#### Security Relevance
+
+Service enumeration provides additional context for assessing network-accessible infrastructure.
+
+Identifying exposed SSH, HTTP, and HTTPS services allows an analyst to determine which applications may warrant configuration review, access-control validation, and vulnerability assessment.
+
+For a security monitoring server, management interfaces and telemetry-related services are particularly important because unauthorized access could affect security visibility or the confidentiality and integrity of collected data.
+
+However, the scan was conducted within an isolated lab network. It did not establish that these services were publicly accessible or exploitable.
+
+No exploitation or vulnerability verification was performed as part of this investigation.
+
+#### Analyst Assessment
+
+**Assessment: Four open TCP ports enumerated, with service fingerprints providing additional application context.**
+
+The investigation demonstrated how service/version detection improves on basic port discovery by collecting application-level information.
+
+The analysis also distinguished Nmap's reported fingerprints from confirmed software inventory and avoided treating exposed services as automatically vulnerable.
