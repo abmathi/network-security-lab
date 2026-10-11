@@ -2,16 +2,18 @@
 
 ## Executive Summary
 
-This project documents hands-on network traffic analysis using Wireshark to investigate TCP connections, DNS resolution, HTTP communication, and TLS negotiation.
+This project documents hands-on network traffic analysis using Wireshark to investigate TCP connection establishment, DNS resolution, TLS negotiation and encrypted communication, and ARP address resolution.
 
-The investigation focused on interpreting packet-level evidence to understand how network communication is established, how applications identify remote destinations, and what information is visible during encrypted and unencrypted traffic.
+The investigation focused on interpreting packet-level evidence to understand how network connections are established, how destinations are resolved, and what metadata remains visible when application content is encrypted.
 
-The analysis covered four protocol areas:
+The analysis covered four protocols:
 
 - **TCP:** Connection establishment using the SYN, SYN-ACK, and ACK handshake.
 - **DNS:** Domain-name resolution and interpretation of query and response traffic.
-- **HTTP:** Application-layer requests and observable protocol metadata.
-- **TLS:** Client Hello messages and the negotiation process used to establish encrypted connections.
+- **TLS:** Client Hello, handshake messages, and encrypted application data.
+- **ARP:** Local IPv4-to-MAC address resolution using requests and replies.
+
+An additional independent TCP/TLS investigation reconstructed one selected connection from its initial handshake through encrypted application-data exchange. Although HTTPS-related traffic was observed, plaintext HTTP requests and response bodies were not recovered.
 
 The objective was to develop practical packet-analysis skills relevant to SOC monitoring, network troubleshooting, and security investigations.
 
@@ -19,20 +21,26 @@ The objective was to develop practical packet-analysis skills relevant to SOC mo
 
 The investigation used Wireshark packet captures collected in a controlled lab environment.
 
-| Protocol | Investigation Focus | Security Relevance |
+| Protocol / exercise | Investigation Focus | Security Relevance |
 | --- | --- | --- |
-| TCP | Three-way handshake and connection establishment | Identifying successful connections and unusual connection patterns |
-| DNS | Domain queries and responses | Investigating suspicious destinations and DNS activity |
-| HTTP | Request methods, headers, and response behavior | Examining application communication and unencrypted traffic |
-| TLS | Client Hello and handshake metadata | Understanding visibility and limitations of encrypted traffic |
+| TCP | Three-way handshake and connection establishment | Identifying completed and incomplete connection attempts |
+| DNS | Domain queries and corresponding responses | Investigating name resolution and destination context |
+| TLS | Handshake messages and encrypted application data | Understanding metadata visibility and encrypted content limitations |
+| ARP | Local IPv4-to-MAC address resolution | Identifying local network relationships and address mappings |
+| Independent TCP/TLS | Reconstruction of a selected network conversation | Correlating successive stages of communication |
 
 ### Investigation Objectives
 
 1. Identify the protocols present in captured network traffic.
+
 2. Examine TCP flags and the sequence used to establish connections.
+
 3. Analyze DNS queries and responses associated with domain resolution.
-4. Interpret visible HTTP request and response information.
+
+4. Examine TLS negotiation and distinguish observable metadata from encrypted application content.
+
 5. Identify key fields in the TLS handshake.
+
 6. Explain what network traffic reveals and what cannot be concluded from the available packets.
 
 ## Evidence Sources and Methodology
@@ -44,21 +52,33 @@ Wireshark was used to inspect captured packets and analyze protocol-specific fie
 The investigation emphasized:
 
 - Source and destination IP addresses
+
 - Source and destination ports
+
 - TCP flags and connection sequences
+
 - DNS query names and response information
-- HTTP request and response fields
+
+- ARP request, reply, and address-resolution fields
+
 - TLS handshake messages and visible negotiation metadata
 
 ### Investigation Methodology
 
 | Step | Analyst Activity |
+
 | --- | --- |
+
 | Capture | Collect network packets in the authorized lab environment |
+
 | Filter | Isolate relevant protocols and conversations |
+
 | Inspect | Examine packet headers, flags, and protocol fields |
+
 | Correlate | Connect related packets to reconstruct communication sequences |
+
 | Assess | Explain the observed behavior and its security relevance |
+
 | Document | Preserve screenshots and evidence-based conclusions |
 
 ### Evidence Standards
@@ -73,14 +93,15 @@ Similarly, observing a TLS Client Hello demonstrates an attempt to negotiate enc
 
 ## Investigation Organization
 
-The report documents four protocol investigations:
+The report documents five findings:
 
-1. TCP Connection Establishment
+1. TCP Three-Way Handshake
 2. DNS Query and Response Analysis
-3. HTTP Traffic Inspection
-4. TLS Handshake Analysis
+3. HTTPS and TLS Encrypted Traffic Analysis
+4. ARP Request and Response Analysis
+5. Independent TCP/TLS Connection Investigation
 
-The final sections will consolidate security implications, evidence limitations, and skills demonstrated.
+The final sections consolidate security implications, evidence limitations, skills demonstrated, and supporting evidence.
 
 ## Investigation Findings
 
@@ -97,9 +118,13 @@ Using Wireshark, I examined the initial packets of a TCP conversation to identif
 A successful TCP three-way handshake consists of three packets:
 
 | Sequence | TCP Flags | Interpretation |
+
 | --- | --- | --- |
+
 | 1 | `SYN` | The client initiates a connection |
+
 | 2 | `SYN, ACK` | The server acknowledges the request and responds |
+
 | 3 | `ACK` | The client acknowledges the server's response |
 
 #### Observed TCP Connection
@@ -109,9 +134,13 @@ The Wireshark capture identified a connection from `192.168.0.84:60144` to `151.
 The following packets established the connection:
 
 | Frame | Source | Destination | TCP Flags |
+
 | --- | --- | --- | --- |
+
 | `9160` | `192.168.0.84:60144` | `151.101.194.214:443` | `SYN` |
+
 | `9202` | `151.101.194.214:443` | `192.168.0.84:60144` | `SYN, ACK` |
+
 | `9203` | `192.168.0.84:60144` | `151.101.194.214:443` | `ACK` |
 
 ![TCP three-way handshake in Wireshark](evidence/01-tcp-three-way-handshake.png)
@@ -123,10 +152,6 @@ The sequence confirmed successful TCP connection establishment.
 Subsequent packets included a TLS Client Hello and encrypted application data, indicating that the connection proceeded beyond the TCP handshake into TLS communication.
 
 The observed packets did not independently establish the legitimacy of the remote service or the application-level purpose of the connection.
-
-The investigation examined packet direction, TCP flags, source and destination ports, and sequence information to distinguish the handshake stages.
-
-The observed packet sequence was consistent with successful TCP connection establishment.
 
 #### Security Relevance
 
@@ -161,15 +186,25 @@ Using the Wireshark display filter `dns`, I isolated DNS packets and examined co
 The captured traffic included the following observations:
 
 | Field | Observed Value |
+
 | --- | --- |
+
 | Client IP | `192.168.0.84` |
+
 | DNS server IP | `192.168.0.6` |
+
 | Client UDP port | `62122` |
+
 | DNS destination port | `53` |
+
 | Queried domain | `example.com` |
+
 | Query type | `A` |
+
 | Query transaction ID | `0x0002` |
+
 | Query frame | `2095` |
+
 | Response frame | `2096` |
 
 ![DNS query and response analysis in Wireshark](evidence/02-dns-udp-analysis.png)
@@ -183,6 +218,7 @@ Frame `2096` contained the corresponding response, identified by the matching tr
 The DNS response included two IPv4 addresses:
 
 - `172.66.147.243`
+
 - `104.20.23.154`
 
 The capture also contained AAAA queries for IPv6 records, PTR reverse-lookup queries, and DNS activity involving `v20.events.data.microsoft.com`.
@@ -228,12 +264,19 @@ The capture showed communication between `192.168.0.84` and `23.211.177.8` over 
 The following TLS handshake messages were observed:
 
 | Frame | TLS Message | Interpretation |
+
 | --- | --- | --- |
+
 | `2651` | Client Hello | Client initiates TLS negotiation |
+
 | `2678` | Server Hello | Server responds with negotiated parameters |
+
 | `2683` | Certificate Status, Server Key Exchange, Server Hello Done | Additional server-side handshake messages |
+
 | `2685` | Client Key Exchange, Change Cipher Spec, Encrypted Handshake Message | Client proceeds with key exchange and encrypted handshake |
+
 | `2703` | New Session Ticket, Change Cipher Spec, Encrypted Handshake Message | Server continues handshake completion |
+
 | `2705` | Application Data | Encrypted application communication follows |
 
 ![HTTPS and TLS traffic analysis](evidence/03-https-tls-encrypted-traffic.png)
@@ -255,8 +298,11 @@ Frame `2721` contained a TLS application-data record sent from `23.211.177.8:443
 The selected packet displayed:
 
 - TLS version field: `TLS 1.2`
+
 - Record content type: `Application Data (23)`
+
 - Encrypted application-data bytes
+
 - Application protocol identified by Wireshark as HTTP/2
 
 Because the application payload was encrypted, the screenshot did not expose plaintext HTTP requests, response bodies, or application content.
@@ -296,15 +342,25 @@ Using the Wireshark display filter `arp`, I isolated ARP traffic and examined th
 The capture showed communication involving devices identified by Wireshark as ASRockInc or ASRockIncorp, RaspberryPi, and VantivaUSA.
 
 | Evidence | Observation |
+
 | --- | --- |
+
 | Display filter | `arp` |
+
 | Selected frame | `6590` |
+
 | Selected packet size | 42 bytes |
+
 | Protocol | ARP over Ethernet/IPv4 |
+
 | Hardware type | Ethernet (1) |
+
 | Protocol type | IPv4 (`0x0800`) |
+
 | Hardware address size | 6 bytes |
+
 | Protocol address size | 4 bytes |
+
 | Selected packet opcode | Request (1) |
 
 ![ARP request and response analysis](evidence/04-arp-request-response.png)
@@ -360,13 +416,21 @@ Rather than examining isolated protocol packets, this investigation correlated m
 I applied the Wireshark display filter `tcp.stream eq 11` to isolate the selected conversation.
 
 | Field | Observed Value |
+
 | --- | --- |
+
 | Client IP | `192.168.0.84` |
+
 | Remote IP | `151.101.130.214` |
+
 | Client source port | `63993` |
+
 | Server destination port | `443` |
+
 | TCP stream | `11` |
-| TLS Client Hello SNI | `www.twitch.tv` |
+
+| TLS Client Hello SNI (from investigation notes; not visible in Figure 5) | `www.twitch.tv` |
+
 | TLS protocol identified by Wireshark | TLS 1.3 |
 
 #### Packet Sequence Reconstruction
@@ -374,21 +438,28 @@ I applied the Wireshark display filter `tcp.stream eq 11` to isolate the selecte
 The captured sequence included the following events:
 
 | Frame | Direction | Observation |
+
 | --- | --- | --- |
+
 | `3807` | Client → Server | TCP SYN |
+
 | `3846` | Server → Client | TCP SYN, ACK |
+
 | `3847` | Client → Server | TCP ACK |
+
 | `3858` | Client → Server | TLS Client Hello |
+
 | `3863` | Server → Client | TLS Server Hello, Change Cipher Spec, Application Data |
+
 | `3865` | Server → Client | TLS Application Data |
 
 ![Independent TCP and TLS analysis](evidence/05-independent-tcp-tls-analysis.png)
 
-*Figure 5 — Independent Wireshark investigation of TCP stream 11 showing connection establishment, TLS negotiation, visible SNI for www.twitch.tv, and encrypted TLS application data.*
+*Figure 5 — Independent Wireshark investigation of TCP stream 11 showing the TCP handshake, TLS 1.3 negotiation, and encrypted application data between `192.168.0.84:63993` and `151.101.130.214:443`. The expanded packet details show an encrypted TLS application-data record.*
 
 The first three packets confirmed that the TCP connection was established.
 
-Following connection establishment, the client initiated TLS negotiation. The Client Hello exposed the server name `www.twitch.tv`.
+Following connection establishment, the client initiated TLS negotiation. The independent investigation notes identified `www.twitch.tv` as the Client Hello SNI, but Figure 5 does not independently display that field.
 
 The subsequent Server Hello and encrypted application-data records demonstrated progression into TLS-protected communication.
 
@@ -407,11 +478,14 @@ The visible evidence did not reveal plaintext application requests or response c
 Reconstructing an entire network conversation is useful during SOC investigations because it allows analysts to distinguish:
 
 - TCP connection establishment from incomplete connection attempts.
+
 - TLS negotiation from application-data transfer.
+
 - Observable destination metadata from encrypted content.
+
 - Confirmed packet behavior from assumptions about the application.
 
-The connection to TCP port `443` and the visible SNI provided destination context, but neither established malicious activity.
+The connection to TCP port `443` and the SNI recorded in the investigation notes provided destination context, but neither established malicious activity.
 
 #### Analyst Assessment
 
@@ -426,11 +500,17 @@ No evidence of malicious behavior was established by the selected conversation a
 The five investigations demonstrated how packet analysis provides visibility into network communication at multiple protocol layers.
 
 | Protocol | Security Investigation Value | Important Limitation |
+
 | --- | --- | --- |
+
 | TCP | Identify connection attempts, completed handshakes, and connection behavior | An established connection does not prove application-level success |
+
 | DNS | Identify queried domains, response records, and name-resolution behavior | DNS resolution does not prove a subsequent connection occurred |
+
 | TLS | Examine handshake metadata and encrypted traffic patterns | Application payloads remain encrypted without appropriate decryption |
+
 | ARP | Examine local IP-to-MAC address resolution and network relationships | Normal ARP exchanges do not establish spoofing or malicious behavior |
+
 | TCP/TLS correlation | Reconstruct connection establishment and subsequent encrypted communication | Destination metadata alone does not establish intent or legitimacy |
 
 From a SOC perspective, these observations are most valuable when correlated with additional evidence such as endpoint logs, DNS telemetry, firewall events, proxy records, and detection alerts.
@@ -443,7 +523,7 @@ This investigation was conducted in a controlled lab environment using Wireshark
 
 The following limitations apply:
 
-1. **Capture scope:** Screenshots preserve selected packets and protocol details rather than complete packet capture files. The documented observations are limited to what the captured evidence demonstrates.
+1. **Capture scope:** The archived evidence consists of screenshots of selected packets and protocol details rather than complete packet capture files. The documented observations are limited to what the captured evidence demonstrates.
 
 2. **Encryption:** TLS application data was encrypted. The investigation did not decrypt application payloads or recover plaintext HTTPS request and response bodies.
 
@@ -460,27 +540,41 @@ The following limitations apply:
 ### Packet Capture and Protocol Analysis
 
 - Navigated Wireshark packet captures and inspected protocol-specific fields.
+
 - Applied display filters to isolate TCP, DNS, TLS, and ARP traffic.
+
 - Interpreted TCP synchronization and acknowledgment flags.
+
 - Correlated DNS queries with their corresponding responses.
+
 - Distinguished TLS handshake messages from encrypted application data.
+
 - Analyzed local IP-to-MAC address resolution using ARP.
 
 ### Network Investigation
 
 - Identified source and destination IP addresses and ports.
+
 - Reconstructed TCP connection establishment using packet sequences.
+
 - Examined DNS transaction identifiers and resource records.
-- Identified visible TLS Server Name Indication (SNI) metadata.
+
+- Examined TLS SNI metadata in the documented capture and distinguished note-derived values from screenshot-verified fields.
+
 - Used `tcp.stream eq 11` to investigate an individual connection.
+
 - Distinguished observable packet behavior from conclusions requiring additional evidence.
 
 ### SOC Analyst Practices
 
 - Documented technical findings with supporting screenshots.
+
 - Correlated network evidence across multiple protocol layers.
+
 - Evaluated the security significance of network metadata.
+
 - Identified investigative limitations and avoided unsupported malicious-activity classifications.
+
 - Preserved evidence-based conclusions suitable for technical review.
 
 ## Conclusion
@@ -496,12 +590,17 @@ These techniques provide a foundation for SOC alert triage, network troubleshoot
 ## Evidence Index
 
 | Figure | Evidence | Description |
+
 | --- | --- | --- |
+
 | 1 | `01-tcp-three-way-handshake.png` | TCP SYN, SYN-ACK, and ACK sequence |
+
 | 2 | `02-dns-udp-analysis.png` | DNS query and response correlation |
+
 | 3 | `03-https-tls-encrypted-traffic.png` | TLS negotiation and encrypted application data |
+
 | 4 | `04-arp-request-response.png` | Local ARP request and reply traffic |
+
 | 5 | `05-independent-tcp-tls-analysis.png` | Independent TCP stream reconstruction and TLS analysis |
 
 All evidence screenshots are located in the accompanying [`evidence/`](evidence/) directory.
-
