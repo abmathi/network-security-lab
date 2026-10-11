@@ -344,3 +344,79 @@ However, the presence of ordinary ARP requests and replies does not establish AR
 The capture demonstrated how Wireshark exposes hardware addresses, protocol identifiers, and address-resolution behavior.
 
 No malicious ARP activity was established by the available screenshot.
+
+### Finding 5 — Independent TCP/TLS Connection Investigation
+
+#### Investigation Context
+
+To extend the guided packet-analysis exercises, I independently selected and investigated a TCP conversation in Wireshark.
+
+The objective was to reconstruct the connection from its initial TCP handshake through TLS negotiation and encrypted application communication.
+
+Rather than examining isolated protocol packets, this investigation correlated multiple stages of a single network conversation.
+
+#### Connection Identification
+
+I applied the Wireshark display filter `tcp.stream eq 11` to isolate the selected conversation.
+
+| Field | Observed Value |
+| --- | --- |
+| Client IP | `192.168.0.84` |
+| Remote IP | `151.101.130.214` |
+| Client source port | `63993` |
+| Server destination port | `443` |
+| TCP stream | `11` |
+| TLS Client Hello SNI | `www.twitch.tv` |
+| TLS protocol identified by Wireshark | TLS 1.3 |
+
+#### Packet Sequence Reconstruction
+
+The captured sequence included the following events:
+
+| Frame | Direction | Observation |
+| --- | --- | --- |
+| `3807` | Client → Server | TCP SYN |
+| `3846` | Server → Client | TCP SYN, ACK |
+| `3847` | Client → Server | TCP ACK |
+| `3858` | Client → Server | TLS Client Hello |
+| `3863` | Server → Client | TLS Server Hello, Change Cipher Spec, Application Data |
+| `3865` | Server → Client | TLS Application Data |
+
+![Independent TCP and TLS analysis](evidence/05-independent-tcp-tls-analysis.png)
+
+*Figure 5 — Independent Wireshark investigation of TCP stream 11 showing connection establishment, TLS negotiation, visible SNI for www.twitch.tv, and encrypted TLS application data.*
+
+The first three packets confirmed that the TCP connection was established.
+
+Following connection establishment, the client initiated TLS negotiation. The Client Hello exposed the server name `www.twitch.tv`.
+
+The subsequent Server Hello and encrypted application-data records demonstrated progression into TLS-protected communication.
+
+#### Encrypted Traffic Examination
+
+Frame `3865` contained TLS application data sent from `151.101.130.214:443` to `192.168.0.84:63993`.
+
+Wireshark displayed the traffic as TLS 1.3 and identified an encrypted application-data record.
+
+Although the TLS record-layer version field displayed `0x0303` (TLS 1.2), this is a legacy compatibility field and does not establish that the negotiated connection used TLS 1.2.
+
+The visible evidence did not reveal plaintext application requests or response content.
+
+#### Security Relevance
+
+Reconstructing an entire network conversation is useful during SOC investigations because it allows analysts to distinguish:
+
+- TCP connection establishment from incomplete connection attempts.
+- TLS negotiation from application-data transfer.
+- Observable destination metadata from encrypted content.
+- Confirmed packet behavior from assumptions about the application.
+
+The connection to TCP port `443` and the visible SNI provided destination context, but neither established malicious activity.
+
+#### Analyst Assessment
+
+**Assessment: TCP connection establishment and subsequent TLS communication independently reconstructed.**
+
+The investigation demonstrated the ability to isolate a network conversation, correlate its packets, identify handshake stages, and interpret encrypted communication without relying on plaintext application payloads.
+
+No evidence of malicious behavior was established by the selected conversation alone.
