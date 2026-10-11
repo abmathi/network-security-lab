@@ -210,3 +210,71 @@ However, a successful DNS response does not independently establish that the cli
 The packet evidence demonstrated how DNS requests and responses can be reconstructed using Wireshark.
 
 The investigation also showed how DNS telemetry can provide useful destination context while remaining distinct from evidence of subsequent network connections.
+
+### Finding 3 — HTTPS and TLS Encrypted Traffic Analysis
+
+#### Investigation Context
+
+The third investigation examined HTTPS communication using Wireshark, focusing on the TLS handshake and encrypted application data.
+
+The objective was to distinguish information visible during TLS negotiation from application content protected by encryption.
+
+#### Packet Analysis
+
+Using the Wireshark display filter `tcp.port == 443`, I isolated TCP traffic involving HTTPS connections.
+
+The capture showed communication between `192.168.0.84` and `23.211.177.8` over TCP port `443`.
+
+The following TLS handshake messages were observed:
+
+| Frame | TLS Message | Interpretation |
+| --- | --- | --- |
+| `2651` | Client Hello | Client initiates TLS negotiation |
+| `2678` | Server Hello | Server responds with negotiated parameters |
+| `2683` | Certificate Status, Server Key Exchange, Server Hello Done | Additional server-side handshake messages |
+| `2685` | Client Key Exchange, Change Cipher Spec, Encrypted Handshake Message | Client proceeds with key exchange and encrypted handshake |
+| `2703` | New Session Ticket, Change Cipher Spec, Encrypted Handshake Message | Server continues handshake completion |
+| `2705` | Application Data | Encrypted application communication follows |
+
+![HTTPS and TLS traffic analysis](evidence/03-https-tls-encrypted-traffic.png)
+
+*Figure 3 — Wireshark capture showing TLS negotiation with `catalog.gamepass.com` visible in the Client Hello SNI, followed by encrypted application data. Frame 2721 displays a TLS 1.2 application-data record.*
+
+The Client Hello also exposed a Server Name Indication (SNI) value:
+
+`catalog.gamepass.com`
+
+This demonstrated that destination hostname information was visible in the captured Client Hello.
+
+The capture subsequently showed encrypted application data exchanged between the endpoints.
+
+#### Encrypted Application Data
+
+Frame `2721` contained a TLS application-data record sent from `23.211.177.8:443` to `192.168.0.84:61947`.
+
+The selected packet displayed:
+
+- TLS version field: `TLS 1.2`
+- Record content type: `Application Data (23)`
+- Encrypted application-data bytes
+- Application protocol identified by Wireshark as HTTP/2
+
+Because the application payload was encrypted, the screenshot did not expose plaintext HTTP requests, response bodies, or application content.
+
+#### Security Relevance
+
+TLS analysis allows security analysts to examine network metadata even when application payloads are encrypted.
+
+Observable information can include source and destination addresses, ports, packet direction, handshake messages, and some negotiation metadata.
+
+However, encrypted application data limits direct inspection of application-layer content without appropriate decryption capabilities.
+
+#### Analyst Assessment
+
+**Assessment: TLS negotiation and subsequent encrypted application communication identified.**
+
+The observed handshake sequence and subsequent application-data records were consistent with an established encrypted connection.
+
+The evidence demonstrated the distinction between visible network metadata and encrypted application content.
+
+No conclusion about malicious activity was supported by this packet capture alone.
