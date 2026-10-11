@@ -102,6 +102,28 @@ A successful TCP three-way handshake consists of three packets:
 | 2 | `SYN, ACK` | The server acknowledges the request and responds |
 | 3 | `ACK` | The client acknowledges the server's response |
 
+#### Observed TCP Connection
+
+The Wireshark capture identified a connection from `192.168.0.84:60144` to `151.101.194.214:443`.
+
+The following packets established the connection:
+
+| Frame | Source | Destination | TCP Flags |
+| --- | --- | --- | --- |
+| `9160` | `192.168.0.84:60144` | `151.101.194.214:443` | `SYN` |
+| `9202` | `151.101.194.214:443` | `192.168.0.84:60144` | `SYN, ACK` |
+| `9203` | `192.168.0.84:60144` | `151.101.194.214:443` | `ACK` |
+
+![TCP three-way handshake in Wireshark](evidence/01-tcp-three-way-handshake.png)
+
+*Figure 1 — Wireshark TCP stream 10 showing the SYN, SYN-ACK, and ACK handshake between `192.168.0.84:60144` and `151.101.194.214:443`. The selected SYN packet displays TCP flag `0x002`.*
+
+The sequence confirmed successful TCP connection establishment.
+
+Subsequent packets included a TLS Client Hello and encrypted application data, indicating that the connection proceeded beyond the TCP handshake into TLS communication.
+
+The observed packets did not independently establish the legitimacy of the remote service or the application-level purpose of the connection.
+
 The investigation examined packet direction, TCP flags, source and destination ports, and sequence information to distinguish the handshake stages.
 
 The observed packet sequence was consistent with successful TCP connection establishment.
