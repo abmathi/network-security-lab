@@ -420,3 +420,88 @@ The connection to TCP port `443` and the visible SNI provided destination contex
 The investigation demonstrated the ability to isolate a network conversation, correlate its packets, identify handshake stages, and interpret encrypted communication without relying on plaintext application payloads.
 
 No evidence of malicious behavior was established by the selected conversation alone.
+
+## Security Implications
+
+The five investigations demonstrated how packet analysis provides visibility into network communication at multiple protocol layers.
+
+| Protocol | Security Investigation Value | Important Limitation |
+| --- | --- | --- |
+| TCP | Identify connection attempts, completed handshakes, and connection behavior | An established connection does not prove application-level success |
+| DNS | Identify queried domains, response records, and name-resolution behavior | DNS resolution does not prove a subsequent connection occurred |
+| TLS | Examine handshake metadata and encrypted traffic patterns | Application payloads remain encrypted without appropriate decryption |
+| ARP | Examine local IP-to-MAC address resolution and network relationships | Normal ARP exchanges do not establish spoofing or malicious behavior |
+| TCP/TLS correlation | Reconstruct connection establishment and subsequent encrypted communication | Destination metadata alone does not establish intent or legitimacy |
+
+From a SOC perspective, these observations are most valuable when correlated with additional evidence such as endpoint logs, DNS telemetry, firewall events, proxy records, and detection alerts.
+
+For example, unusual DNS activity could identify a destination worth investigating, while subsequent TCP and TLS records could help determine whether network communication followed. Establishing the full sequence requires evidence connecting the relevant events.
+
+## Evidence Limitations
+
+This investigation was conducted in a controlled lab environment using Wireshark packet captures.
+
+The following limitations apply:
+
+1. **Capture scope:** Screenshots preserve selected packets and protocol details rather than complete packet capture files. The documented observations are limited to what the captured evidence demonstrates.
+
+2. **Encryption:** TLS application data was encrypted. The investigation did not decrypt application payloads or recover plaintext HTTPS request and response bodies.
+
+3. **Traffic attribution:** IP addresses, ports, and visible hostname metadata provide network context but do not independently identify the responsible process, user, or application.
+
+4. **Behavior classification:** The observed TCP, DNS, TLS, and ARP exchanges were not sufficient to classify any connection as malicious.
+
+5. **Temporal correlation:** Not all protocol findings represent stages of the same communication session. The independent TCP/TLS investigation was specifically used to reconstruct one isolated TCP stream.
+
+6. **Evidence redaction:** Some address information was redacted in the ARP screenshot. The analysis does not infer hidden address values.
+
+## Skills Demonstrated
+
+### Packet Capture and Protocol Analysis
+
+- Navigated Wireshark packet captures and inspected protocol-specific fields.
+- Applied display filters to isolate TCP, DNS, TLS, and ARP traffic.
+- Interpreted TCP synchronization and acknowledgment flags.
+- Correlated DNS queries with their corresponding responses.
+- Distinguished TLS handshake messages from encrypted application data.
+- Analyzed local IP-to-MAC address resolution using ARP.
+
+### Network Investigation
+
+- Identified source and destination IP addresses and ports.
+- Reconstructed TCP connection establishment using packet sequences.
+- Examined DNS transaction identifiers and resource records.
+- Identified visible TLS Server Name Indication (SNI) metadata.
+- Used `tcp.stream eq 11` to investigate an individual connection.
+- Distinguished observable packet behavior from conclusions requiring additional evidence.
+
+### SOC Analyst Practices
+
+- Documented technical findings with supporting screenshots.
+- Correlated network evidence across multiple protocol layers.
+- Evaluated the security significance of network metadata.
+- Identified investigative limitations and avoided unsupported malicious-activity classifications.
+- Preserved evidence-based conclusions suitable for technical review.
+
+## Conclusion
+
+This investigation demonstrated practical network traffic analysis across TCP, DNS, TLS, and ARP.
+
+The guided investigations established foundational packet-analysis skills, while the independent TCP/TLS exercise extended those skills by reconstructing the lifecycle of a selected network conversation.
+
+The strongest outcome was the ability to distinguish what packet captures directly establish from what would require additional endpoint, application, or security telemetry.
+
+These techniques provide a foundation for SOC alert triage, network troubleshooting, threat hunting, and incident response.
+
+## Evidence Index
+
+| Figure | Evidence | Description |
+| --- | --- | --- |
+| 1 | `01-tcp-three-way-handshake.png` | TCP SYN, SYN-ACK, and ACK sequence |
+| 2 | `02-dns-udp-analysis.png` | DNS query and response correlation |
+| 3 | `03-https-tls-encrypted-traffic.png` | TLS negotiation and encrypted application data |
+| 4 | `04-arp-request-response.png` | Local ARP request and reply traffic |
+| 5 | `05-independent-tcp-tls-analysis.png` | Independent TCP stream reconstruction and TLS analysis |
+
+All evidence screenshots are located in the accompanying [`evidence/`](evidence/) directory.
+
