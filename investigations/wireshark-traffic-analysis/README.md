@@ -143,3 +143,70 @@ However, an established TCP connection does not independently prove that higher-
 The packet sequence demonstrated how TCP synchronization and acknowledgment flags establish a connection.
 
 The investigation also showed how packet-level analysis can support network troubleshooting and SOC investigations by identifying whether the initial connection process completed.
+
+### Finding 2 — DNS Query and Response Analysis
+
+#### Investigation Context
+
+The second investigation examined Domain Name System (DNS) traffic using Wireshark.
+
+DNS translates domain names into information such as IP addresses, allowing clients to locate network services without relying on manually entered addresses.
+
+The objective was to identify DNS requests, examine the corresponding responses, and determine what information was visible in the captured traffic.
+
+#### Packet Analysis
+
+Using the Wireshark display filter `dns`, I isolated DNS packets and examined communication between the client and DNS server.
+
+The captured traffic included the following observations:
+
+| Field | Observed Value |
+| --- | --- |
+| Client IP | `192.168.0.84` |
+| DNS server IP | `192.168.0.6` |
+| Client UDP port | `62122` |
+| DNS destination port | `53` |
+| Queried domain | `example.com` |
+| Query type | `A` |
+| Query transaction ID | `0x0002` |
+| Query frame | `2095` |
+| Response frame | `2096` |
+
+![DNS query and response analysis in Wireshark](evidence/02-dns-udp-analysis.png)
+
+*Figure 2 — Wireshark DNS capture showing a UDP query for `example.com` from `192.168.0.84` to `192.168.0.6`, with frame 2095 linked to response frame 2096.*
+
+Frame `2095` contained a standard DNS query requesting an IPv4 address record for `example.com`.
+
+Frame `2096` contained the corresponding response, identified by the matching transaction ID `0x0002`.
+
+The DNS response included two IPv4 addresses:
+
+- `172.66.147.243`
+- `104.20.23.154`
+
+The capture also contained AAAA queries for IPv6 records, PTR reverse-lookup queries, and DNS activity involving `v20.events.data.microsoft.com`.
+
+#### Query and Response Correlation
+
+The relationship between frames `2095` and `2096` demonstrated how a client request can be matched to its corresponding DNS response.
+
+The client sent its query to UDP destination port `53`, and the DNS server returned address information for the requested domain.
+
+The query and response shared a transaction identifier, providing an additional correlation field beyond source and destination addresses.
+
+#### Security Relevance
+
+DNS analysis is useful for identifying external destinations and investigating suspicious name-resolution behavior.
+
+For example, unusual domains, repeated queries, unexpected record types, or excessive failed resolutions can warrant further investigation when correlated with endpoint and network activity.
+
+However, a successful DNS response does not independently establish that the client subsequently connected to the returned IP addresses.
+
+#### Analyst Assessment
+
+**Assessment: DNS name resolution and query-response correlation successfully identified.**
+
+The packet evidence demonstrated how DNS requests and responses can be reconstructed using Wireshark.
+
+The investigation also showed how DNS telemetry can provide useful destination context while remaining distinct from evidence of subsequent network connections.
