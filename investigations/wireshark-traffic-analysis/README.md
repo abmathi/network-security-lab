@@ -278,3 +278,69 @@ The observed handshake sequence and subsequent application-data records were con
 The evidence demonstrated the distinction between visible network metadata and encrypted application content.
 
 No conclusion about malicious activity was supported by this packet capture alone.
+
+### Finding 4 — ARP Request and Response Analysis
+
+#### Investigation Context
+
+The fourth investigation examined Address Resolution Protocol (ARP) traffic to understand how devices discover the MAC addresses associated with IPv4 addresses on a local network.
+
+Unlike DNS, which resolves domain names into records such as IP addresses, ARP supports local network delivery by associating an IPv4 address with a link-layer hardware address.
+
+The objective was to distinguish ARP requests from replies and identify the information exposed during local address resolution.
+
+#### Packet Analysis
+
+Using the Wireshark display filter `arp`, I isolated ARP traffic and examined the packet list and protocol details.
+
+The capture showed communication involving devices identified by Wireshark as ASRockInc or ASRockIncorp, RaspberryPi, and VantivaUSA.
+
+| Evidence | Observation |
+| --- | --- |
+| Display filter | `arp` |
+| Selected frame | `6590` |
+| Selected packet size | 42 bytes |
+| Protocol | ARP over Ethernet/IPv4 |
+| Hardware type | Ethernet (1) |
+| Protocol type | IPv4 (`0x0800`) |
+| Hardware address size | 6 bytes |
+| Protocol address size | 4 bytes |
+| Selected packet opcode | Request (1) |
+
+![ARP request and response analysis](evidence/04-arp-request-response.png)
+
+*Figure 4 — Wireshark capture filtered for ARP traffic. Frame 6590 displays an Ethernet/IPv4 ARP request, followed by frame 6591 showing an ARP reply. Additional local address-resolution exchanges are visible.*
+
+Frame `6590` contained an ARP request from an ASRock-associated device asking for the hardware address corresponding to a local `192.168.x.x` IPv4 address.
+
+The following frame, `6591`, displayed an ARP reply from a Raspberry Pi-associated device containing an IP-to-MAC address association.
+
+Additional request and reply traffic was visible between ASRock-associated, Raspberry Pi-associated, and Vantiva-associated devices.
+
+Some portions of the addresses were intentionally redacted in the screenshot.
+
+#### Request and Reply Interpretation
+
+An ARP request asks which device owns a particular IPv4 address on the local network.
+
+An ARP reply provides the corresponding hardware address, allowing the requesting host to direct Ethernet frames to the appropriate destination.
+
+The captured packets demonstrated both request and reply behavior, showing how hosts maintain the address mappings required for local communication.
+
+The visible packet sequence was consistent with ordinary ARP address resolution.
+
+#### Security Relevance
+
+ARP traffic can be useful when investigating local network connectivity problems, unexpected address changes, and potential ARP spoofing activity.
+
+For example, conflicting MAC address mappings for the same IPv4 address may warrant additional investigation.
+
+However, the presence of ordinary ARP requests and replies does not establish ARP spoofing or malicious activity.
+
+#### Analyst Assessment
+
+**Assessment: ARP requests and replies identified in local network traffic.**
+
+The capture demonstrated how Wireshark exposes hardware addresses, protocol identifiers, and address-resolution behavior.
+
+No malicious ARP activity was established by the available screenshot.
